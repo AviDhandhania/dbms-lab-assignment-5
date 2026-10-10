@@ -1,4 +1,4 @@
-# DBMS DA3: Simple CRUD Web Application
+# DBMS Lab Assignment 5: Simple CRUD Web Application
 
 ## Architecture
 - **Backend:** Plain Java using standard `HttpServer` (`BackendCRUD.java`). It exposes a simple REST API on port `8080`.
