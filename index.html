@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced DBMS Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-hover: #3a56d4;
+            --secondary: #2b2d42;
+            --background: #f8f9fa;
+            --surface: #ffffff;
+            --danger: #ef233c;
+            --success: #2ec4b6;
+            --text-main: #2b2d42;
+            --text-muted: #8d99ae;
+            --border: #edf2f4;
+            --accent: #f72585;
+        }
+
+        body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background-color: var(--background); color: var(--text-main); }
+        header { background-color: var(--secondary); color: white; padding: 20px 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        header h1 { margin: 0; font-weight: 600; font-size: 24px; }
+        .status-badge { background-color: rgba(46, 196, 182, 0.2); color: var(--success); padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; border: 1px solid var(--success); }
+
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr; gap: 30px; }
+
+        .card { background: var(--surface); border-radius: 12px; padding: 25px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); border: 1px solid var(--border); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
+        .card-header h2 { margin: 0; color: var(--secondary); font-size: 20px; }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: var(--secondary); }
+        input[type="text"], input[type="email"], textarea, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #dcdcdc; border-radius: 6px; font-size: 14px; font-family: 'Inter', sans-serif; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); }
+        textarea { resize: vertical; min-height: 120px; font-family: 'Courier New', Courier, monospace; }
+
+        button { padding: 10px 18px; background-color: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: background-color 0.2s; }
+        button:hover { background-color: var(--primary-hover); }
+        .cancel-btn { background-color: var(--text-muted); }
+        .cancel-btn:hover { background-color: #6c757d; }
+        .danger-btn { background-color: var(--danger); }
+        .danger-btn:hover { background-color: #d90429; }
+        .secondary-btn { background-color: var(--accent); }
+        .secondary-btn:hover { background-color: #d1136b; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 10px 15px; border-bottom: 1px solid var(--border); text-align: left; }
+        th { background-color: #f8f9fa; font-weight: 600; color: var(--text-muted); text-transform: uppercase; font-size: 12px; }
+        tr:hover { background-color: #fcfcfc; }
+
+        .alert { padding: 10px; border-radius: 4px; margin-bottom: 15px; display: none; font-size: 14px; }
+        .alert.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #edf2f4; }
+        
+        #dynamicFormArea { background: #fdfdfd; padding: 20px; border-radius: 8px; border: 1px solid var(--primary); margin-bottom: 20px; display: none; }
+        
+        /* Query Runner Styles */
+        #queryResult { margin-top: 15px; background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; font-family: 'Courier New', Courier, monospace; font-size: 13px; overflow-x: auto; max-height: 300px; }
+        #queryResultTable { color: white; border: 1px solid #333; margin-bottom: 0;}
+        #queryResultTable th { background-color: #333; color: #ccc; border-bottom: 1px solid #555; }
+        #queryResultTable td { border-bottom: 1px solid #333; }
+        
+        /* Two columns layout for main area */
+        .two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Database Manager</h1>
+    <span class="status-badge">● Database Connected</span>
+</header>
+
+<div class="container">
+
+    <!-- Table Manager -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Table Manager</h2>
+        </div>
+        <div id="tableAlert" class="alert"></div>
+        
+        <div class="toolbar">
+            <label style="margin:0;">Select Table: </label>
+            <select id="tableSelect" onchange="loadTableData()" style="width: 200px;">
+                <option value="">-- Select a Table --</option>
+            </select>
+            <button onclick="refreshTables()" class="secondary-btn" title="Refresh list">↻</button>
+            <div style="flex-grow:1;"></div>
+            <button onclick="showCreateTable()" class="edit-btn">➕ New Table</button>
+            <button onclick="dropCurrentTable()" class="danger-btn">🗑️ Drop Table</button>
+            <button onclick="showAddRow()" style="background-color: var(--primary);">📝 Add Row</button>
+        </div>
+
+        <!-- Dynamic Forms Container -->
+        <div id="dynamicFormArea"></div>
+
+        <div style="overflow-x: auto;">
+            <table id="dataTable">
+                <thead id="dataTableHead"><tr><th>Please select a table</th></tr></thead>
+                <tbody id="dataTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SQL Query Runner -->
+    <div class="card">
+        <div class="card-header">
+            <h2>SQL Query Runner</h2>
+            <select id="queryHistory" style="width: 150px; padding: 6px; font-size: 12px;" onchange="loadQueryFromHistory()">
+                <option value="">-- History --</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <textarea id="sqlQuery" placeholder="e.g. ALTER TABLE users ADD age NUMBER;"></textarea>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: space-between;">
+            <div>
+                <button onclick="runQuery()">Execute SQL</button>
+                <button class="cancel-btn" onclick="clearQuery()">Clear</button>
+            </div>
+            <button class="secondary-btn" id="exportBtn" style="display:none;" onclick="exportCSV()">Export CSV</button>
+        </div>
+        
+        <div id="queryResult"><em>Query results will appear here...</em></div>
+    </div>
+
+</div>
+
+<script>
+    const QUERY_URL = 'http://localhost:8080/api/query';
+    let currentTable = '';
+    let currentColumns = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+        refreshTables();
+        loadHistoryDropdown();
+    });
+
+    function showAlert(id, message, isError = false) {
+        const el = document.getElementById(id);
+        el.style.display = 'block';
+        el.textContent = message;
+        el.className = 'alert ' + (isError ? 'error' : 'success');
+        setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    async function executeSQL(query) {
+        const response = await fetch(QUERY_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `query=${encodeURIComponent(query)}`
+        });
+        return response.json();
+    }
+
+    // --- Table Management ---
+
+    async function refreshTables() {
+        // Fetch all user tables in Oracle
+        const data = await executeSQL("SELECT table_name FROM user_tables ORDER BY table_name");
+        const sel = document.getElementById('tableSelect');
+        const prevVal = sel.value;
+        sel.innerHTML = '<option value="">-- Select a Table --</option>';
+        if(data.data) {
+            data.data.forEach(row => {
+                sel.innerHTML += `<option value="${row.TABLE_NAME}">${row.TABLE_NAME}</option>`;
+            });
+        }
+        if(prevVal) { sel.value = prevVal; }
+    }
+
+    async function loadTableData() {
+        const t = document.getElementById('tableSelect').value;
+        currentTable = t;
+        const th = document.getElementById('dataTableHead');
+        const tb = document.getElementById('dataTableBody');
+        document.getElementById('dynamicFormArea').style.display = 'none';
+        
+        if(!t) {
+            th.innerHTML = '<tr><th>Please select a table</th></tr>';
+            tb.innerHTML = '';
+            return;
+        }
+
+        th.innerHTML = '<tr><th>Loading...</th></tr>';
+        tb.innerHTML = '';
+
+        // 1. Get Columns
+        const colRes = await executeSQL(`SELECT column_name, data_type FROM user_tab_cols WHERE table_name = '${t}' ORDER BY column_id`);
+        if(colRes.data) {
+            currentColumns = colRes.data.map(c => c.COLUMN_NAME);
+            let headRow = '<tr>';
+            currentColumns.forEach(c => headRow += `<th>${c}</th>`);
+            headRow += '<th style="width:80px;">Actions</th></tr>';
+            th.innerHTML = headRow;
+        }
+
+        // 2. Get Data
+        const dataRes = await executeSQL(`SELECT * FROM ${t}`);
+        if(dataRes.data) {
+            if(dataRes.data.length === 0) {
+                tb.innerHTML = `<tr><td colspan="${currentColumns.length + 1}" style="text-align:center;">No rows found.</td></tr>`;
+            } else {
+                dataRes.data.forEach(row => {
+                    let tr = '<tr>';
+                    currentColumns.forEach(c => {
+                        tr += `<td>${row[c] !== null ? row[c] : '<em>null</em>'}</td>`;
+                    });
+                    
+                    // Generate a delete condition based on first column (heuristic for PK)
+                    const pkCol = currentColumns[0];
+                    const pkVal = row[pkCol];
+                    let delArg = typeof pkVal === 'number' ? pkVal : `'${pkVal}'`;
+                    
+                    tr += `<td><button class="danger-btn" style="padding:4px 8px; font-size:11px;" onclick="deleteRow('${pkCol}', ${delArg})">Del</button></td></tr>`;
+                    tb.innerHTML += tr;
+                });
+            }
+        } else if (dataRes.error) {
+            showAlert('tableAlert', dataRes.error, true);
+        }
+    }
+
+    async function deleteRow(col, val) {
+        if(!confirm(`Delete row where ${col} = ${val}?`)) return;
+        const query = `DELETE FROM ${currentTable} WHERE ${col} = ${val}`;
+        const res = await executeSQL(query);
+        if(res.error) showAlert('tableAlert', res.error, true);
+        else {
+            showAlert('tableAlert', 'Row deleted successfully.');
+            loadTableData();
+        }
+    }
+
+    function showAddRow() {
+        if(!currentTable) return showAlert('tableAlert', 'Please select a table first.', true);
+        const area = document.getElementById('dynamicFormArea');
+        let html = `<h3>Add Row to ${currentTable}</h3>`;
+        currentColumns.forEach(c => {
+            html += `<div class="form-group"><label>${c}</label><input type="text" id="insert_${c}"></div>`;
+        });
+        html += `<button onclick="submitInsert()">Insert</button> <button class="cancel-btn" onclick="document.getElementById('dynamicFormArea').style.display='none'">Cancel</button>`;
+        area.innerHTML = html;
+        area.style.display = 'block';
+    }
+
+    async function submitInsert() {
+        let cols = [];
+        let vals = [];
+        currentColumns.forEach(c => {
+            const v = document.getElementById(`insert_${c}`).value;
+            if(v) {
+                cols.push(c);
+                vals.push(`'${v.replace(/'/g, "''")}'`); // escape quotes
+            }
+        });
+        const query = `INSERT INTO ${currentTable} (${cols.join(',')}) VALUES (${vals.join(',')})`;
+        const res = await executeSQL(query);
+        if(res.error) showAlert('tableAlert', res.error, true);
+        else {
+            showAlert('tableAlert', 'Row inserted successfully!');
+            document.getElementById('dynamicFormArea').style.display = 'none';
+            loadTableData();
+        }
+    }
+
+    function showCreateTable() {
+        const area = document.getElementById('dynamicFormArea');
+        area.innerHTML = `
+            <h3>Create New Table</h3>
+            <div class="form-group">
+                <label>Table Name (e.g. PRODUCTS)</label>
+                <input type="text" id="newTableName" placeholder="PRODUCTS">
+            </div>
+            <div class="form-group">
+                <label>Columns Definition (SQL format)</label>
+                <textarea id="newTableCols" placeholder="id NUMBER PRIMARY KEY,
+name VARCHAR2(100),
+price NUMBER"></textarea>
+            </div>
+            <button onclick="submitCreateTable()">Create Table</button>
+            <button class="cancel-btn" onclick="document.getElementById('dynamicFormArea').style.display='none'">Cancel</button>
+        `;
+        area.style.display = 'block';
+    }
+
+    async function submitCreateTable() {
+        const name = document.getElementById('newTableName').value.toUpperCase();
+        const cols = document.getElementById('newTableCols').value;
+        if(!name || !cols) return showAlert('tableAlert', 'Table name and columns required.', true);
+        
+        const query = `CREATE TABLE ${name} (${cols})`;
+        const res = await executeSQL(query);
+        if(res.error) showAlert('tableAlert', res.error, true);
+        else {
+            showAlert('tableAlert', `Table ${name} created!`);
+            document.getElementById('dynamicFormArea').style.display = 'none';
+            await refreshTables();
+            document.getElementById('tableSelect').value = name;
+            loadTableData();
+        }
+    }
+
+    async function dropCurrentTable() {
+        if(!currentTable) return showAlert('tableAlert', 'Please select a table to drop.', true);
+        if(!confirm(`WARNING: Are you sure you want to completely DROP the table '${currentTable}' and all its data?`)) return;
+        
+        const res = await executeSQL(`DROP TABLE ${currentTable}`);
+        if(res.error) showAlert('tableAlert', res.error, true);
+        else {
+            showAlert('tableAlert', `Table ${currentTable} dropped.`);
+            currentTable = '';
+            await refreshTables();
+            loadTableData();
+        }
+    }
+
+    // --- Query Runner ---
+
+    let currentResultSet = null;
+
+    function saveToHistory(query) {
+        let history = JSON.parse(localStorage.getItem('queryHistory') || '[]');
+        if(!history.includes(query)) {
+            history.unshift(query); 
+            if(history.length > 10) history.pop();
+            localStorage.setItem('queryHistory', JSON.stringify(history));
+            loadHistoryDropdown();
+        }
+    }
+
+    function loadHistoryDropdown() {
+        const history = JSON.parse(localStorage.getItem('queryHistory') || '[]');
+        const sel = document.getElementById('queryHistory');
+        sel.innerHTML = '<option value="">-- History --</option>';
+        history.forEach((q, i) => {
+            let snippet = q.length > 20 ? q.substring(0,20) + '...' : q;
+            sel.innerHTML += `<option value="${i}">${snippet}</option>`;
+        });
+    }
+
+    function loadQueryFromHistory() {
+        const history = JSON.parse(localStorage.getItem('queryHistory') || '[]');
+        const idx = document.getElementById('queryHistory').value;
+        if(idx !== "") document.getElementById('sqlQuery').value = history[idx];
+    }
+
+    function clearQuery() {
+        document.getElementById('sqlQuery').value = '';
+        document.getElementById('queryResult').innerHTML = '<em>Query results will appear here...</em>';
+        document.getElementById('exportBtn').style.display = 'none';
+        currentResultSet = null;
+    }
+
+    async function runQuery() {
+        const query = document.getElementById('sqlQuery').value;
+        const resDiv = document.getElementById('queryResult');
+        if (!query.trim()) return resDiv.innerHTML = '<span style="color: #ff5555;">Please enter a query.</span>';
+
+        saveToHistory(query);
+        resDiv.innerHTML = 'Executing...';
+        document.getElementById('exportBtn').style.display = 'none';
+        currentResultSet = null;
+
+        const data = await executeSQL(query);
+        
+        if (data.error) {
+            resDiv.innerHTML = '<span style="color: #ff5555;">Error:<br>' + data.error + '</span>';
+        } else if (data.data) {
+            if (data.data.length === 0) {
+                resDiv.innerHTML = '<em>Query returned 0 rows.</em>';
+            } else {
+                currentResultSet = data.data; 
+                document.getElementById('exportBtn').style.display = 'inline-block';
+                let html = '<table id="queryResultTable"><thead><tr>';
+                Object.keys(data.data[0]).forEach(k => html += `<th>${k}</th>`);
+                html += '</tr></thead><tbody>';
+                data.data.forEach(row => {
+                    html += '<tr>';
+                    Object.values(row).forEach(v => html += `<td>${v !== null ? v : 'null'}</td>`);
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                resDiv.innerHTML = html;
+            }
+        } else {
+            resDiv.innerHTML = `<span style="color: #55ff55;">${data.message}</span>`;
+            refreshTables(); // just in case it was a DDL query
+        }
+    }
+
+    function exportCSV() {
+        if(!currentResultSet || currentResultSet.length === 0) return;
+        const keys = Object.keys(currentResultSet[0]);
+        let csvContent = "data:text/csv;charset=utf-8," + keys.join(",") + "\n";
+        currentResultSet.forEach(row => {
+            const rowStr = keys.map(k => {
+                let cell = row[k] === null ? '' : String(row[k]);
+                if(cell.includes(',') || cell.includes('"')) cell = `"${cell.replace(/"/g, '""')}"`;
+                return cell;
+            }).join(",");
+            csvContent += rowStr + "\n";
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "query_export.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+
+</body>
+</html>

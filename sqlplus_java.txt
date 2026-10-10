@@ -1,0 +1,47 @@
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+public class OracleLocalConnect {
+    public static void main(String[] args) {
+        // Lab network database URL pointing to 172.16.9.72 with service name 'smarts'
+        String url = "jdbc:oracle:thin:@//172.16.9.72:1521/smarts";
+        String user = "90123";
+        String password = "90123";
+
+        try {
+            Class.forName("oracle.jdbc.driver.OracleDriver");
+
+            System.out.println("Connecting to Oracle database (smarts)...");
+            Connection conn = DriverManager.getConnection(url, user, password);
+            System.out.println(" Connected to Oracle Database successfully!");
+
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT 'DB Active: ' || USER FROM dual");
+
+            if (rs.next()) {
+                System.out.println(rs.getString(1));
+            }
+
+            rs.close();
+            stmt.close();
+            conn.close();
+            System.out.println(" Connection closed successfully.");
+        } catch (ClassNotFoundException e) {
+            System.err.println("Driver Error: ojdbc6.jar not found on classpath.");
+        } catch (SQLException e) {
+            System.err.println("Database Error: " + e.getMessage());
+        }
+    }
+}
+
+
+
+
+
+Commands to Compile and Run
+
+javac -cp ".;ojdbc6.jar" OracleLocalConnect.java
+java -cp ".;ojdbc6.jar" OracleLocalConnect
